@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generator maili o prowizji — Akademia Brokera</title>
+<style>
+  :root{ --blue:#1351D8; --ink:#0E0E0E; --bg:#EEF1F8; --line:#DCE6FB; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  .topbar{background:var(--blue);color:#fff;padding:16px 24px;display:flex;align-items:center;gap:16px;}
+  .topbar img{height:30px;display:block;}
+  .topbar h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px;}
+  .wrap{display:flex;gap:22px;padding:22px;align-items:flex-start;max-width:1300px;margin:0 auto;}
+  .col{flex:1;min-width:0;}
+  .panel{background:#fff;border:1px solid #E1E8F6;border-radius:14px;padding:22px;box-shadow:0 4px 16px rgba(14,14,14,.05);}
+  .hint{background:#EAF0FE;border-left:5px solid var(--blue);border-radius:10px;padding:12px 16px;font-size:13.5px;line-height:1.55;color:#1b2b4d;margin-bottom:18px;}
+  h2.sec{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue);margin:22px 0 10px;font-weight:800;}
+  h2.sec:first-of-type{margin-top:4px;}
+  label.f{display:block;font-size:13px;font-weight:700;margin:0 0 5px;color:#3A3F4A;}
+  input[type=text]{width:100%;padding:11px 13px;border:1px solid #CBD6EC;border-radius:9px;font-size:15px;font-family:inherit;background:#fff;}
+  input[type=text]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(19,81,216,.15);}
+  .row2{display:flex;gap:12px;}
+  .row2>div{flex:1;}
+  /* tabela polis */
+  .polhead,.polrow{display:grid;grid-template-columns:1fr 90px 130px 34px;gap:8px;align-items:center;}
+  .polhead{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#6A7080;font-weight:700;margin-bottom:6px;padding:0 2px;}
+  .polrow{margin-bottom:8px;}
+  .polrow input{padding:9px 10px;font-size:14px;}
+  .btn-del{border:none;background:#FBE9E9;color:#C0392B;border-radius:8px;height:38px;font-size:18px;cursor:pointer;line-height:1;}
+  .btn-del:hover{background:#f6d5d5;}
+  .btn-add{margin-top:4px;background:#EAF0FE;color:var(--blue);border:1px dashed #9db9f2;border-radius:9px;padding:10px;width:100%;font-size:14px;font-weight:700;cursor:pointer;}
+  .btn-add:hover{background:#dde9fd;}
+  .btn-copytmt{background:#EAF0FE;color:var(--blue);border:1px solid #9db9f2;border-radius:9px;padding:0 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .btn-copytmt:hover{background:#dde9fd;}
+  .opt-note{font-size:12px;color:#9aa3b5;font-weight:400;}
+  .totals{background:#F6F8FD;border:1px solid #E1E8F6;border-radius:10px;padding:12px 16px;margin-top:12px;font-size:14px;line-height:1.9;}
+  .totals b{color:var(--blue);}
+  .check{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:#3A3F4A;cursor:pointer;margin:2px 0 10px;}
+  .check input{width:18px;height:18px;accent-color:var(--blue);cursor:pointer;}
+  .radio{display:flex;gap:9px;align-items:flex-start;font-size:14px;color:#3A3F4A;cursor:pointer;margin-bottom:8px;line-height:1.4;}
+  .radio input{width:18px;height:18px;accent-color:var(--blue);margin-top:1px;cursor:pointer;}
+  .subfield{margin:8px 0 4px 0;}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;}
+  .btn{border:none;border-radius:10px;padding:14px 20px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
+  .btn-primary{background:var(--blue);color:#fff;flex:1;min-width:200px;}
+  .btn-primary:hover{background:#0f43b3;}
+  .btn-second{background:#0E0E0E;color:#fff;}
+  .btn-second:hover{background:#252525;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#0E0E0E;color:#fff;padding:13px 22px;border-radius:10px;font-size:14px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .previewhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .previewhead span{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#6A7080;font-weight:800;}
+  iframe{width:100%;height:900px;border:1px solid #E1E8F6;border-radius:12px;background:#fff;}
+  @media(max-width:980px){ .wrap{flex-direction:column;} iframe{height:600px;} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <img src="https://us-ms.gr-cdn.com/getresponse-Jvwcp/photos/b5ea679e-027d-40a8-bcf6-c03267b2b410.png" alt="Akademia Brokera" style="background:#fff;padding:4px 8px;border-radius:6px;">
+  <h1>Generator maili o prowizji</h1>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== LEWA: FORMULARZ ===== -->
+  <div class="col">
+    <div class="panel">
+
+      <div class="hint">
+        <b>Jak używać:</b> 1) Wpełnij pola poniżej. 2) Podgląd po prawej aktualizuje się na bieżąco. 3) Kliknij <b>„Kopiuj HTML"</b> i wklej w GetResponse (nowa wiadomość → edytor <b>HTML / źródło</b>). Sumy i liczba polis liczą się automatycznie.
+      </div>
+
+      <h2 class="sec">Dane brokera</h2>
+      <div class="row2">
+        <div>
+          <label class="f">Imię</label>
+          <input type="text" id="imie" placeholder="np. Radek">
+        </div>
+        <div>
+          <label class="f">Okres (miesiąc i rok)</label>
+          <input type="text" id="okres" placeholder="np. maj 2026">
+        </div>
+      </div>
+
+      <h2 class="sec">Temat i szczegóły rozliczenia</h2>
+      <label class="f">Temat maila <span class="opt-note">(uzupełnia się sam z okresu, możesz zmienić)</span></label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="temat" placeholder="Twoja prowizja za maj 2026 - Akademia Brokera">
+        <button class="btn-copytmt" id="copyTmt" title="Kopiuj sam temat">Kopiuj</button>
+      </div>
+      <div class="row2" style="margin-top:12px;">
+        <div>
+          <label class="f">Data naliczenia <span class="opt-note">(opcjonalnie)</span></label>
+          <input type="text" id="data" placeholder="np. 01.07.2026">
+        </div>
+        <div>
+          <label class="f">Nr rozliczenia <span class="opt-note">(opcjonalnie)</span></label>
+          <input type="text" id="nrrozl" placeholder="np. R-2026-05-014">
+        </div>
+      </div>
+
+      <h2 class="sec">Polisy</h2>
+      <div class="polhead">
+        <div>Nr polisy</div><div>Stawka</div><div>Prowizja (zł)</div><div></div>
+      </div>
+      <div id="policies"></div>
+      <button class="btn-add" id="addPol">+ Dodaj polisę</button>
+
+      <div class="totals" id="totals"></div>
+
+      <h2 class="sec">Saldo z poprzednich miesięcy</h2>
+      <label class="check"><input type="checkbox" id="saldoOn"> Dolicz saldo z poprzednich miesięcy</label>
+      <div class="subfield" id="saldoWrap" style="display:none;">
+        <label class="f">Suma poprzednich polis (zł)</label>
+        <input type="text" id="saldo" placeholder="np. 268,70">
+      </div>
+
+      <h2 class="sec">Faktura</h2>
+      <label class="radio"><input type="radio" name="faktura" value="pelne" checked> Pełne dane firmy (Global Media Sp. z o.o.)</label>
+      <label class="radio"><input type="radio" name="faktura" value="ostatnio"> Takie same dane jak ostatnio (bez wpisywania)</label>
+
+      <h2 class="sec">Opcje maila</h2>
+      <label class="check"><input type="checkbox" id="umowaOn" checked> Pokaż informację o umowie zlecenie (dla osób bez działalności)</label>
+      <label class="check"><input type="checkbox" id="emojiOff"> Wersja bez emoji (bardziej urzędowy ton)</label>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="copyBtn">📋 Kopiuj HTML do maila</button>
+        <button class="btn btn-second" id="dlBtn">⬇ Pobierz plik .html</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== PRAWA: PODGLĄD ===== -->
+  <div class="col">
+    <div class="previewhead"><span>Podgląd maila</span></div>
+    <iframe id="preview" title="Podgląd"></iframe>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">Skopiowano do schowka ✓</div>
+
+<script>
+/* ---------- narzędzia ---------- */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function parseMoney(s){
+  if(s==null) return NaN;
+  s=String(s).replace(/\s/g,'').replace(/zł/gi,'');
+  if(s.indexOf(',')>-1){ s=s.replace(/\./g,'').replace(',','.'); }
+  var n=parseFloat(s);
+  return isNaN(n)?NaN:n;
+}
+function formatPLN(n){
+  if(isNaN(n)) return '0,00 zł';
+  return n.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł';
+}
+function formatStawka(s){
+  s=String(s==null?'':s).trim().replace('%','').trim();
+  if(s==='') return '';
+  return s+'%';
+}
+
+/* ---------- stan: polisy ---------- */
+var policiesEl=document.getElementById('policies');
+function addPolicy(nr,stawka,kwota){
+  var div=document.createElement('div');
+  div.className='polrow';
+  div.innerHTML='<input type="text" class="p-nr" placeholder="np. POL/2026/118342">'
+    +'<input type="text" class="p-st" placeholder="100%">'
+    +'<input type="text" class="p-kw" placeholder="np. 6,10">'
+    +'<button class="btn-del" title="Usuń">✕</button>';
+  div.querySelector('.p-nr').value=nr||'';
+  div.querySelector('.p-st').value=stawka||'';
+  div.querySelector('.p-kw').value=kwota||'';
+  div.querySelector('.btn-del').onclick=function(){ div.remove(); render(); };
+  div.querySelectorAll('input').forEach(function(i){ i.addEventListener('input',render); });
+  policiesEl.appendChild(div);
+}
+
+/* ---------- zbierz dane ---------- */
+function collect(){
+  var policies=[];
+  policiesEl.querySelectorAll('.polrow').forEach(function(r){
+    var nr=r.querySelector('.p-nr').value.trim();
+    var st=r.querySelector('.p-st').value.trim();
+    var kw=r.querySelector('.p-kw').value.trim();
+    if(nr==='' && kw==='') return; // pomiń pusty wiersz (bez numeru i kwoty)
+    var kwNum=parseMoney(kw);
+    policies.push({ nr:nr||'—', stawka:formatStawka(st)||'—', kwotaStr:isNaN(kwNum)?'—':formatPLN(kwNum), kwotaNum:isNaN(kwNum)?0:kwNum });
+  });
+  var fakturaMode=document.querySelector('input[name=faktura]:checked').value;
+  return {
+    imie:document.getElementById('imie').value.trim()||'—',
+    okres:document.getElementById('okres').value.trim()||'—',
+    temat:document.getElementById('temat').value.trim(),
+    data:document.getElementById('data').value.trim(),
+    nrrozl:document.getElementById('nrrozl').value.trim(),
+    policies:policies,
+    saldoOn:document.getElementById('saldoOn').checked,
+    saldoNum:parseMoney(document.getElementById('saldo').value),
+    fakturaMode:fakturaMode,
+    umowaOn:document.getElementById('umowaOn').checked,
+    emojiOn:!document.getElementById('emojiOff').checked
+  };
+}
+
+/* ---------- walidacja przed kopiowaniem ---------- */
+function validate(d){
+  var e=[];
+  if(d.imie==='—') e.push('• Imię brokera');
+  if(d.okres==='—') e.push('• Okres (miesiąc i rok)');
+  if(d.policies.length===0) e.push('• Co najmniej jedna polisa (numer i kwota)');
+  else if(d.policies.some(function(p){return p.nr==='—'||p.kwotaStr==='—';})) e.push('• W każdej polisie: numer ORAZ kwota prowizji');
+  return e;
+}
+
+/* ---------- budowa maila HTML ---------- */
+function buildEmail(d){
+  var prowizja=d.policies.reduce(function(a,p){return a+p.kwotaNum;},0);
+  var prowizjaStr=formatPLN(prowizja);
+  var liczba=d.policies.length;
+  var imie=esc(d.imie), okres=esc(d.okres);
+  var eHero=d.emojiOn?' 🎉':'', eProw=d.emojiOn?'💰&nbsp; ':'', ePol=d.emojiOn?'📄&nbsp; ':'', eRocket=d.emojiOn?' 🚀':'';
+
+  var metaLine='';
+  if(d.data || d.nrrozl){
+    var parts=[];
+    if(d.data) parts.push('Data naliczenia: '+esc(d.data));
+    if(d.nrrozl) parts.push('Nr rozliczenia: '+esc(d.nrrozl));
+    metaLine='        <tr><td class="px" align="left" style="padding:6px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:13px;color:#8A90A0;">'+parts.join(' &nbsp;·&nbsp; ')+'</p></td></tr>\n';
+  }
+
+  var rows=d.policies.map(function(p){return ''
+    +'\n                <tr>'
+    +'\n                  <td align="left" style="padding:14px 20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#0E0E0E;font-weight:bold;border-top:1px solid #EEF1F8;">'+esc(p.nr)+'</td>'
+    +'\n                  <td align="center" style="padding:14px 12px;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#1351D8;font-weight:bold;white-space:nowrap;border-top:1px solid #EEF1F8;">'+esc(p.stawka)+'</td>'
+    +'\n                  <td align="right" style="padding:14px 20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#0E0E0E;font-weight:bold;white-space:nowrap;border-top:1px solid #EEF1F8;">'+esc(p.kwotaStr)+'</td>'
+    +'\n                </tr>';}).join('');
+
+  var saldoRow='', totalBlock='', preheaderKwota=prowizjaStr;
+  if(d.saldoOn){
+    var saldoNum=isNaN(d.saldoNum)?0:d.saldoNum;
+    var total=saldoNum+prowizja;
+    preheaderKwota=formatPLN(total);
+    saldoRow=''
+      +'\n                    <table role="presentation" class="sumrow" width="100%" cellpadding="0" cellspacing="0" border="0">'
+      +'\n                      <tr>'
+      +'\n                        <td align="left" style="padding:7px 0;font-size:16px;color:#3A3F4A;">Suma poprzednich polis</td>'
+      +'\n                        <td align="right" style="padding:7px 0;font-size:16px;color:#0E0E0E;font-weight:bold;white-space:nowrap;">'+formatPLN(saldoNum)+'</td>'
+      +'\n                      </tr>'
+      +'\n                    </table>';
+    totalBlock=''
+      +'\n                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+      +'\n                      <tr><td style="padding:12px 0 0 0;"><div style="height:1px;line-height:1px;font-size:0;background-color:#C6D6F7;">&nbsp;</div></td></tr>'
+      +'\n                      <tr>'
+      +'\n                        <td align="left" valign="middle" style="padding:14px 0 0 0;font-size:15px;color:#0E0E0E;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">Łączna kwota</td>'
+      +'\n                        <td align="right" valign="middle" style="padding:14px 0 0 0;"><span class="total-num" style="font-size:34px;line-height:1;color:#1351D8;font-weight:bold;white-space:nowrap;">'+formatPLN(total)+'</span></td>'
+      +'\n                      </tr>'
+      +'\n                    </table>';
+  }
+
+  var faktura;
+  if(d.fakturaMode==='ostatnio'){
+    faktura=''
+      +'\n              <p style="margin:0 0 10px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Faktura</p>'
+      +'\n              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F8FD" style="background-color:#F6F8FD;border:1px solid #E1E8F6;border-radius:12px;">'
+      +'\n                <tr><td style="padding:18px 22px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#0E0E0E;">Prosimy o wystawienie <strong>FV na takie same dane jak ostatnio</strong>.</td></tr>'
+      +'\n              </table>';
+  } else {
+    faktura=''
+      +'\n              <p style="margin:0 0 10px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Faktura</p>'
+      +'\n              <p style="margin:0 0 12px 0;font-size:16px;line-height:1.6;color:#3A3F4A;">Jeśli masz możliwość wystawienia faktury - prosimy o wystawienie na dane:</p>'
+      +'\n              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F8FD" style="background-color:#F6F8FD;border:1px solid #E1E8F6;border-radius:12px;">'
+      +'\n                <tr><td style="padding:18px 22px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#0E0E0E;"><strong>Global Media Sp. z o.o.</strong><br>NIP: 5170447352<br>ul. Kwiatkowskiego 44d/3<br>35-311 Rzeszów</td></tr>'
+      +'\n              </table>'
+      +'\n              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EAF0FE" style="background-color:#EAF0FE;border-left:5px solid #1351D8;border-radius:10px;margin-top:14px;">'
+      +'\n                <tr><td style="padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#0E0E0E;">W opisie prosimy dopisać:<br><strong style="font-size:16px;color:#0E0E0E;">„Zwolnienie ze względu na rodzaj prowadzonej działalności (art. 43 ust. 1 ustawy o VAT)”</strong><br><strong style="color:#1351D8;">Ubezpieczenia są zwolnione z VAT.</strong></td></tr>'
+      +'\n              </table>';
+  }
+
+  var umowa='';
+  if(d.umowaOn){
+    umowa=''
+      +'\n          <tr>'
+      +'\n            <td align="left" style="padding:20px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">'
+      +'\n              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFDF5" style="background-color:#FFFDF5;border:1px solid #F3E6C4;border-radius:12px;">'
+      +'\n                <tr><td style="padding:18px 22px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#5A4B1F;"><strong style="color:#0E0E0E;">Nie masz własnej działalności?</strong><br>Możemy wypłacić prowizję umową zlecenie. Minimalna kwota wypłaty to <strong>500 zł</strong> - jeśli suma polis jest niewystarczająca, saldo przechodzi na kolejny miesiąc.</td></tr>'
+      +'\n              </table>'
+      +'\n            </td>'
+      +'\n          </tr>';
+  }
+
+  return ''
++'<!DOCTYPE html>\n'
++'<html lang="pl" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">\n'
++'<head>\n'
++'  <meta charset="utf-8">\n'
++'  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
++'  <meta http-equiv="X-UA-Compatible" content="IE=edge">\n'
++'  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">\n'
++'  <meta name="color-scheme" content="light only">\n'
++'  <title>Akademia Brokera - rozliczenie prowizji</title>\n'
++'  <style>\n'
++'    body{margin:0!important;padding:0!important;width:100%!important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}\n'
++'    table{border-collapse:collapse!important;mso-table-lspace:0pt;mso-table-rspace:0pt;}\n'
++'    img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;display:block;}\n'
++'    a{text-decoration:none;}\n'
++'    @media only screen and (max-width:600px){\n'
++'      .container{width:100%!important;}\n'
++'      .px{padding-left:24px!important;padding-right:24px!important;}\n'
++'      .h1{font-size:26px!important;line-height:1.25!important;}\n'
++'      .total-num{font-size:30px!important;}\n'
++'      .sumrow td{font-size:15px!important;}\n'
++'    }\n'
++'  </style>\n'
++'</head>\n'
++'<body style="margin:0;padding:0;background-color:#EEF1F8;">\n'
++'  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#EEF1F8;opacity:0;">Twoja prowizja za '+okres+' została naliczona. Łączna kwota: '+preheaderKwota+' &#8205;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>\n'
++'  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EEF1F8" style="background-color:#EEF1F8;">\n'
++'    <tr><td align="center" style="padding:28px 12px;">\n'
++'      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(14,14,14,0.08);">\n'
++'        <tr><td bgcolor="#1351D8" style="background-color:#1351D8;height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>\n'
++'        <tr><td align="center" bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:30px 24px 26px 24px;border-bottom:1px solid #EEF1F8;"><img src="https://us-ms.gr-cdn.com/getresponse-Jvwcp/photos/b5ea679e-027d-40a8-bcf6-c03267b2b410.png" width="280" height="44" alt="AKADEMIA BROKERA" style="width:280px;max-width:70%;height:auto;margin:0 auto;color:#0E0E0E;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;letter-spacing:1px;"></td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:38px 48px 8px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 6px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Rozliczenie prowizji</p><h1 class="h1" style="margin:0;font-size:30px;line-height:1.2;color:#0E0E0E;font-weight:bold;">Świetne wieści, '+imie+'!'+eHero+'</h1></td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:10px 48px 4px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:17px;line-height:1.6;color:#3A3F4A;">Twoja prowizja za <strong style="color:#0E0E0E;">'+okres+'</strong> została właśnie naliczona. Poniżej znajdziesz pełne podsumowanie.</p></td></tr>\n'
++metaLine
++'        <tr><td class="px" style="padding:24px 48px 8px 48px;">\n'
++'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EAF0FE" style="background-color:#EAF0FE;border-radius:14px;border-left:5px solid #1351D8;"><tr><td style="padding:24px 26px;font-family:Arial,Helvetica,sans-serif;">\n'
++'                    <p style="margin:0 0 14px 0;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Podsumowanie</p>'
++saldoRow
++'\n                    <table role="presentation" class="sumrow" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="left" style="padding:7px 0;font-size:16px;color:#3A3F4A;">'+eProw+'Prowizja za '+okres+'</td><td align="right" style="padding:7px 0;font-size:16px;color:#0E0E0E;font-weight:bold;white-space:nowrap;">'+prowizjaStr+'</td></tr></table>'
++'\n                    <table role="presentation" class="sumrow" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="left" style="padding:7px 0;font-size:16px;color:#3A3F4A;">'+ePol+'Liczba polis</td><td align="right" style="padding:7px 0;font-size:16px;color:#0E0E0E;font-weight:bold;white-space:nowrap;">'+liczba+'</td></tr></table>'
++totalBlock
++'\n          </td></tr></table>\n'
++'        </td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">\n'
++'          <p style="margin:0 0 12px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Rozliczone polisy</p>\n'
++'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #E1E8F6;border-radius:12px;overflow:hidden;">\n'
++'                <tr>\n'
++'                  <td align="left" bgcolor="#EAF0FE" style="background-color:#EAF0FE;padding:12px 20px;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Nr polisy</td>\n'
++'                  <td align="center" bgcolor="#EAF0FE" style="background-color:#EAF0FE;padding:12px 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1351D8;font-weight:bold;white-space:nowrap;">Stawka</td>\n'
++'                  <td align="right" bgcolor="#EAF0FE" style="background-color:#EAF0FE;padding:12px 20px;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Prowizja</td>\n'
++'                </tr>'
++rows
++'\n          </table>\n'
++'        </td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:22px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">'
++faktura
++'\n        </td></tr>\n'
++umowa
++'        <tr><td class="px" align="left" style="padding:18px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:15px;line-height:1.6;color:#3A3F4A;">Masz pytania do rozliczenia albo coś jest niejasne? Zadzwoń: <a href="tel:+48788569015" style="color:#1351D8;font-weight:bold;text-decoration:none;white-space:nowrap;">788&nbsp;569&nbsp;015</a>.</p></td></tr>\n'
++'        <tr><td class="px" style="padding:26px 48px 0 48px;"><div style="height:1px;line-height:1px;font-size:0;background-color:#ECEFF6;">&nbsp;</div></td></tr>\n'
++'        <tr><td class="px" style="padding:26px 48px 0 48px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F1F5FF" style="background-color:#F1F5FF;border:1px solid #DCE6FB;border-radius:14px;"><tr><td align="center" style="padding:28px 30px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 12px 0;font-size:23px;line-height:1.2;color:#1351D8;font-weight:bold;">Gratulujemy!'+eHero+'</p><p style="margin:0 0 14px 0;font-size:18px;line-height:1.6;color:#0E0E0E;font-weight:bold;">To efekt Twojej pracy, zaangażowania i zaufania, którym obdarzyli Cię klienci.</p><p style="margin:0;font-size:16px;line-height:1.65;color:#3A3F4A;">Każda z tych polis to czyjeś bezpieczeństwo i Twój realny wpływ. Trzymaj ten rytm: kolejny okres rozliczeniowy już się zaczął, a my jesteśmy tu, żeby Cię wspierać.</p></td></tr></table></td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:22px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:18px;line-height:1.6;color:#0E0E0E;font-weight:bold;">Powodzenia i do następnej prowizji!'+eRocket+'</p></td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:18px 48px 40px 48px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="padding-right:14px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="48" bgcolor="#1351D8" style="background-color:#1351D8;border-radius:50%;width:48px;height:48px;"><tr><td align="center" valign="middle" height="48" style="height:48px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#FFFFFF;">AB</td></tr></table></td><td valign="middle"><p style="margin:0;font-size:16px;color:#0E0E0E;font-weight:bold;">Zespół Akademii Brokera</p><p style="margin:2px 0 0 0;font-size:14px;color:#6A7080;">akademiabrokera.pl</p></td></tr></table></td></tr>\n'
++'        <tr><td align="center" bgcolor="#0E0E0E" style="background-color:#0E0E0E;padding:24px 40px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:13px;line-height:1.6;color:#A7AEBE;">Akademia Brokera · Global Media Sp. z o.o.<br>ul. Kwiatkowskiego 44d/3, 35-311 Rzeszów · tel. 788 569 015</p><p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#6A7080;">Otrzymujesz tę wiadomość jako uczestnik programu Akademii Brokera.</p></td></tr>\n'
++'      </table>\n'
++'    </td></tr>\n'
++'  </table>\n'
++'</body>\n'
++'</html>';
+}
+
+/* ---------- render podglądu + sumy ---------- */
+var lastHtml='';
+var tematDirty=false;
+function render(){
+  if(!tematDirty){
+    var ok=document.getElementById('okres').value.trim();
+    document.getElementById('temat').value = ok ? ('Twoja prowizja za '+ok+' - Akademia Brokera') : 'Twoja prowizja - Akademia Brokera';
+  }
+  var d=collect();
+  // sumy w formularzu
+  var prowizja=d.policies.reduce(function(a,p){return a+p.kwotaNum;},0);
+  var t='📄 Liczba polis: <b>'+d.policies.length+'</b><br>💰 Prowizja za okres: <b>'+formatPLN(prowizja)+'</b>';
+  if(d.saldoOn){
+    var s=isNaN(d.saldoNum)?0:d.saldoNum;
+    t+='<br>➕ Saldo poprzednie: <b>'+formatPLN(s)+'</b><br>✅ Łączna kwota do wypłaty: <b>'+formatPLN(s+prowizja)+'</b>';
+  }
+  document.getElementById('totals').innerHTML=t;
+  // podgląd
+  lastHtml=buildEmail(d);
+  document.getElementById('preview').srcdoc=lastHtml;
+}
+
+/* ---------- zdarzenia ---------- */
+document.getElementById('addPol').onclick=function(){ addPolicy('','100',''); render(); };
+document.getElementById('saldoOn').onchange=function(){
+  document.getElementById('saldoWrap').style.display=this.checked?'block':'none'; render();
+};
+['imie','okres','saldo','data','nrrozl'].forEach(function(id){ document.getElementById(id).addEventListener('input',render); });
+document.getElementById('temat').addEventListener('input',function(){ tematDirty=this.value.trim().length>0; });
+document.getElementById('umowaOn').onchange=render;
+document.getElementById('emojiOff').onchange=render;
+document.querySelectorAll('input[name=faktura]').forEach(function(r){ r.onchange=render; });
+
+document.getElementById('copyTmt').onclick=function(){
+  var t=document.getElementById('temat').value.trim();
+  if(!t){ alert('Najpierw wpisz okres albo temat maila.'); return; }
+  navigator.clipboard.writeText(t).then(function(){showToast('Skopiowano temat ✓');}, function(){
+    var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy');}catch(e){} ta.remove(); showToast('Skopiowano temat ✓');
+  });
+};
+
+document.getElementById('copyBtn').onclick=function(){
+  var errs=validate(collect());
+  if(errs.length){ alert('Uzupełnij zanim skopiujesz:\n\n'+errs.join('\n')); return; }
+  navigator.clipboard.writeText(lastHtml).then(function(){showToast('Skopiowano HTML ✓');}, function(){
+    var ta=document.createElement('textarea'); ta.value=lastHtml; document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy');}catch(e){} ta.remove(); showToast('Skopiowano HTML ✓');
+  });
+};
+document.getElementById('dlBtn').onclick=function(){
+  var d=collect();
+  var errs=validate(d);
+  if(errs.length){ alert('Uzupełnij zanim pobierzesz:\n\n'+errs.join('\n')); return; }
+  var name=('prowizja_'+d.imie+'_'+d.okres).replace(/[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+/g,'_');
+  var blob=new Blob([lastHtml],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name+'.html'; a.click();
+};
+function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg||'Skopiowano ✓'; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},1800); }
+
+/* ---------- start ---------- */
+addPolicy('','100','');
+render();
+</script>
+</body>
+</html>
