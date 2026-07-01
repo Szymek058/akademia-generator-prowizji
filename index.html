@@ -34,6 +34,9 @@
   .btn-copytmt{background:#EAF0FE;color:var(--blue);border:1px solid #9db9f2;border-radius:9px;padding:0 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .btn-copytmt:hover{background:#dde9fd;}
   .opt-note{font-size:12px;color:#9aa3b5;font-weight:400;}
+  .btn-variant{margin-top:2px;background:#F1F5FF;color:var(--blue);border:1px solid #9db9f2;border-radius:9px;padding:11px;width:100%;font-size:14px;font-weight:700;cursor:pointer;}
+  .btn-variant:hover{background:#e3ecfd;}
+  .variant-label{font-size:12px;color:#6A7080;font-weight:600;margin:8px 0 0;}
   .totals{background:#F6F8FD;border:1px solid #E1E8F6;border-radius:10px;padding:12px 16px;margin-top:12px;font-size:14px;line-height:1.9;}
   .totals b{color:var(--blue);}
   .check{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:#3A3F4A;cursor:pointer;margin:2px 0 10px;}
@@ -100,6 +103,10 @@
           <input type="text" id="nrrozl" placeholder="np. R-2026-05-014">
         </div>
       </div>
+      <div class="subfield">
+        <label class="f">Termin wypłaty <span class="opt-note">(opcjonalnie, ucina pytania „kiedy przelew")</span></label>
+        <input type="text" id="termin" placeholder="np. do 10.07.2026">
+      </div>
 
       <h2 class="sec">Polisy</h2>
       <div class="polhead">
@@ -117,6 +124,11 @@
         <input type="text" id="saldo" placeholder="np. 268,70">
       </div>
 
+      <h2 class="sec">Status wypłaty</h2>
+      <label class="radio"><input type="radio" name="status" value="teraz" checked> Do wypłaty teraz (zielony znacznik)</label>
+      <label class="radio"><input type="radio" name="status" value="kumuluje"> Kumuluje się — poniżej progu 500 zł (bursztynowy)</label>
+      <label class="radio"><input type="radio" name="status" value="brak"> Nie pokazuj statusu</label>
+
       <h2 class="sec">Faktura</h2>
       <label class="radio"><input type="radio" name="faktura" value="pelne" checked> Pełne dane firmy (Global Media Sp. z o.o.)</label>
       <label class="radio"><input type="radio" name="faktura" value="ostatnio"> Takie same dane jak ostatnio (bez wpisywania)</label>
@@ -124,6 +136,11 @@
       <h2 class="sec">Opcje maila</h2>
       <label class="check"><input type="checkbox" id="umowaOn" checked> Pokaż informację o umowie zlecenie (dla osób bez działalności)</label>
       <label class="check"><input type="checkbox" id="emojiOff"> Wersja bez emoji (bardziej urzędowy ton)</label>
+      <label class="check"><input type="checkbox" id="softHead"> Łagodniejszy nagłówek (dla małych kwot, bez „Świetne wieści")</label>
+
+      <h2 class="sec">Wariant tekstu</h2>
+      <button class="btn-variant" id="variantBtn">🔀 Zmień wariant zdań (uznanie i zamknięcie)</button>
+      <p class="variant-label" id="variantLabel"></p>
 
       <div class="actions">
         <button class="btn btn-primary" id="copyBtn">📋 Kopiuj HTML do maila</button>
@@ -162,6 +179,21 @@ function formatStawka(s){
   if(s==='') return '';
   return s+'%';
 }
+
+/* ---------- warianty tekstu (zdanie uznania + zamknięcia, w parach) ---------- */
+var REC_VARIANTS=[
+  'To efekt Twojej pracy, zaangażowania i zaufania, którym obdarzyli Cię klienci.',
+  'Za tą kwotą stoi Twoja robota i zaufanie, jakim obdarzyli Cię klienci.',
+  'Każda z tych polis to Twój wysiłek i decyzja klienta, żeby postawić właśnie na Ciebie.',
+  'To Twoja praca zamieniona w konkret. Klienci Ci zaufali i widać tego efekt.'
+];
+var CLOSE_VARIANTS=[
+  'Każda z tych polis to czyjeś bezpieczeństwo i Twój realny wpływ. Trzymaj ten rytm: kolejny okres rozliczeniowy już się zaczął, a my jesteśmy tu, żeby Cię wspierać.',
+  'Za każdą polisą stoi czyjeś bezpieczeństwo. Nowy okres już wystartował, a my gramy z Tobą do przodu.',
+  'Robisz kawał dobrej roboty. Kolejny miesiąc już leci, a Ty wiesz, że masz nas po swojej stronie.',
+  'Świetna passa. Kolejny okres rozliczeniowy już wystartował, a my wspieramy Cię dalej.'
+];
+var variantIndex=0;
 
 /* ---------- stan: polisy ---------- */
 var policiesEl=document.getElementById('policies');
@@ -203,7 +235,10 @@ function collect(){
     saldoNum:parseMoney(document.getElementById('saldo').value),
     fakturaMode:fakturaMode,
     umowaOn:document.getElementById('umowaOn').checked,
-    emojiOn:!document.getElementById('emojiOff').checked
+    emojiOn:!document.getElementById('emojiOff').checked,
+    statusMode:(document.querySelector('input[name=status]:checked')||{}).value||'teraz',
+    termin:document.getElementById('termin').value.trim(),
+    softHead:document.getElementById('softHead').checked
   };
 }
 
@@ -224,6 +259,28 @@ function buildEmail(d){
   var liczba=d.policies.length;
   var imie=esc(d.imie), okres=esc(d.okres);
   var eHero=d.emojiOn?' 🎉':'', eProw=d.emojiOn?'💰&nbsp; ':'', ePol=d.emojiOn?'📄&nbsp; ':'', eRocket=d.emojiOn?' 🚀':'';
+
+  // nagłówek: łagodny dla małych kwot albo domyślny „Świetne wieści"
+  var heroTitle = d.softHead ? ('Twoja prowizja za '+okres+' jest gotowa, '+imie+'.') : ('Świetne wieści, '+imie+'!'+eHero);
+
+  // warianty zdań uznania/zamknięcia
+  var vi = variantIndex % REC_VARIANTS.length;
+  var recTxt = REC_VARIANTS[vi], closeTxt = CLOSE_VARIANTS[vi];
+
+  // status wypłaty + termin (blok pod kartą kwoty)
+  var payoutTotal = (d.saldoOn ? (isNaN(d.saldoNum)?0:d.saldoNum) : 0) + prowizja;
+  var brakuje = 500 - payoutTotal;
+  var eOk=d.emojiOn?'✅ ':'', eWait=d.emojiOn?'⏳ ':'', eCal=d.emojiOn?'🗓 ':'';
+  var statusBlock='';
+  if(d.statusMode==='teraz'){
+    var terminTxt = d.termin ? (' Planowana wypłata: '+esc(d.termin)+'.') : '';
+    statusBlock='        <tr><td class="px" align="left" style="padding:14px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#E9F7EF" style="background-color:#E9F7EF;border-left:5px solid #1E9E5A;border-radius:10px;"><tr><td style="padding:14px 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#14663A;">'+eOk+'<strong style="color:#0E0E0E;">Kwota gotowa do wypłaty.</strong>'+terminTxt+'</td></tr></table></td></tr>\n';
+  } else if(d.statusMode==='kumuluje'){
+    var brakTxt = brakuje>0 ? (' Do progu 500 zł brakuje '+formatPLN(brakuje)+'.') : '';
+    statusBlock='        <tr><td class="px" align="left" style="padding:14px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFF7E6" style="background-color:#FFF7E6;border-left:5px solid #E0A800;border-radius:10px;"><tr><td style="padding:14px 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#6B5200;">'+eWait+'<strong style="color:#0E0E0E;">Ta kwota kumuluje się do wypłaty.</strong>'+brakTxt+' Saldo przechodzi na kolejny miesiąc.</td></tr></table></td></tr>\n';
+  } else if(d.termin){
+    statusBlock='        <tr><td class="px" align="left" style="padding:14px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:14px;color:#3A3F4A;">'+eCal+'Planowana wypłata: <strong>'+esc(d.termin)+'</strong>.</p></td></tr>\n';
+  }
 
   var metaLine='';
   if(d.data || d.nrrozl){
@@ -324,7 +381,7 @@ function buildEmail(d){
 +'      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(14,14,14,0.08);">\n'
 +'        <tr><td bgcolor="#1351D8" style="background-color:#1351D8;height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>\n'
 +'        <tr><td align="center" bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:30px 24px 26px 24px;border-bottom:1px solid #EEF1F8;"><img src="https://us-ms.gr-cdn.com/getresponse-Jvwcp/photos/b5ea679e-027d-40a8-bcf6-c03267b2b410.png" width="280" height="44" alt="AKADEMIA BROKERA" style="width:280px;max-width:70%;height:auto;margin:0 auto;color:#0E0E0E;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;letter-spacing:1px;"></td></tr>\n'
-+'        <tr><td class="px" align="left" style="padding:38px 48px 8px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 6px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Rozliczenie prowizji</p><h1 class="h1" style="margin:0;font-size:30px;line-height:1.2;color:#0E0E0E;font-weight:bold;">Świetne wieści, '+imie+'!'+eHero+'</h1></td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:38px 48px 8px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 6px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Rozliczenie prowizji</p><h1 class="h1" style="margin:0;font-size:30px;line-height:1.2;color:#0E0E0E;font-weight:bold;">'+heroTitle+'</h1></td></tr>\n'
 +'        <tr><td class="px" align="left" style="padding:10px 48px 4px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:17px;line-height:1.6;color:#3A3F4A;">Twoja prowizja za <strong style="color:#0E0E0E;">'+okres+'</strong> została właśnie naliczona. Poniżej znajdziesz pełne podsumowanie.</p></td></tr>\n'
 +metaLine
 +'        <tr><td class="px" style="padding:24px 48px 8px 48px;">\n'
@@ -336,6 +393,7 @@ function buildEmail(d){
 +totalBlock
 +'\n          </td></tr></table>\n'
 +'        </td></tr>\n'
++statusBlock
 +'        <tr><td class="px" align="left" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">\n'
 +'          <p style="margin:0 0 12px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Rozliczone polisy</p>\n'
 +'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #E1E8F6;border-radius:12px;overflow:hidden;">\n'
@@ -353,7 +411,7 @@ function buildEmail(d){
 +umowa
 +'        <tr><td class="px" align="left" style="padding:18px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:15px;line-height:1.6;color:#3A3F4A;">Masz pytania do rozliczenia albo coś jest niejasne? Zadzwoń: <a href="tel:+48788569015" style="color:#1351D8;font-weight:bold;text-decoration:none;white-space:nowrap;">788&nbsp;569&nbsp;015</a>.</p></td></tr>\n'
 +'        <tr><td class="px" style="padding:26px 48px 0 48px;"><div style="height:1px;line-height:1px;font-size:0;background-color:#ECEFF6;">&nbsp;</div></td></tr>\n'
-+'        <tr><td class="px" style="padding:26px 48px 0 48px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F1F5FF" style="background-color:#F1F5FF;border:1px solid #DCE6FB;border-radius:14px;"><tr><td align="center" style="padding:28px 30px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 12px 0;font-size:23px;line-height:1.2;color:#1351D8;font-weight:bold;">Gratulujemy!'+eHero+'</p><p style="margin:0 0 14px 0;font-size:18px;line-height:1.6;color:#0E0E0E;font-weight:bold;">To efekt Twojej pracy, zaangażowania i zaufania, którym obdarzyli Cię klienci.</p><p style="margin:0;font-size:16px;line-height:1.65;color:#3A3F4A;">Każda z tych polis to czyjeś bezpieczeństwo i Twój realny wpływ. Trzymaj ten rytm: kolejny okres rozliczeniowy już się zaczął, a my jesteśmy tu, żeby Cię wspierać.</p></td></tr></table></td></tr>\n'
++'        <tr><td class="px" style="padding:26px 48px 0 48px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F1F5FF" style="background-color:#F1F5FF;border:1px solid #DCE6FB;border-radius:14px;"><tr><td align="center" style="padding:28px 30px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 12px 0;font-size:23px;line-height:1.2;color:#1351D8;font-weight:bold;">Gratulujemy!'+eHero+'</p><p style="margin:0 0 14px 0;font-size:18px;line-height:1.6;color:#0E0E0E;font-weight:bold;">'+recTxt+'</p><p style="margin:0;font-size:16px;line-height:1.65;color:#3A3F4A;">'+closeTxt+'</p></td></tr></table></td></tr>\n'
 +'        <tr><td class="px" align="left" style="padding:22px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:18px;line-height:1.6;color:#0E0E0E;font-weight:bold;">Powodzenia i do następnej prowizji!'+eRocket+'</p></td></tr>\n'
 +'        <tr><td class="px" align="left" style="padding:18px 48px 40px 48px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="padding-right:14px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="48" bgcolor="#1351D8" style="background-color:#1351D8;border-radius:50%;width:48px;height:48px;"><tr><td align="center" valign="middle" height="48" style="height:48px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#FFFFFF;">AB</td></tr></table></td><td valign="middle"><p style="margin:0;font-size:16px;color:#0E0E0E;font-weight:bold;">Zespół Akademii Brokera</p><p style="margin:2px 0 0 0;font-size:14px;color:#6A7080;">akademiabrokera.pl</p></td></tr></table></td></tr>\n'
 +'        <tr><td align="center" bgcolor="#0E0E0E" style="background-color:#0E0E0E;padding:24px 40px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:13px;line-height:1.6;color:#A7AEBE;">Akademia Brokera · Global Media Sp. z o.o.<br>ul. Kwiatkowskiego 44d/3, 35-311 Rzeszów · tel. 788 569 015</p><p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#6A7080;">Otrzymujesz tę wiadomość jako uczestnik programu Akademii Brokera.</p></td></tr>\n'
@@ -376,11 +434,15 @@ function render(){
   // sumy w formularzu
   var prowizja=d.policies.reduce(function(a,p){return a+p.kwotaNum;},0);
   var t='📄 Liczba polis: <b>'+d.policies.length+'</b><br>💰 Prowizja za okres: <b>'+formatPLN(prowizja)+'</b>';
+  var payout=prowizja;
   if(d.saldoOn){
-    var s=isNaN(d.saldoNum)?0:d.saldoNum;
-    t+='<br>➕ Saldo poprzednie: <b>'+formatPLN(s)+'</b><br>✅ Łączna kwota do wypłaty: <b>'+formatPLN(s+prowizja)+'</b>';
+    var s=isNaN(d.saldoNum)?0:d.saldoNum; payout=s+prowizja;
+    t+='<br>➕ Saldo poprzednie: <b>'+formatPLN(s)+'</b><br>✅ Łączna kwota do wypłaty: <b>'+formatPLN(payout)+'</b>';
   }
+  if(d.statusMode==='kumuluje'){ var br=500-payout; t+='<br>⏳ Status: <b>kumuluje się</b>'+(br>0?(' · brakuje <b>'+formatPLN(br)+'</b> do progu 500 zł'):''); }
+  else if(d.statusMode==='teraz'){ t+='<br>✅ Status: <b>do wypłaty teraz</b>'; }
   document.getElementById('totals').innerHTML=t;
+  document.getElementById('variantLabel').textContent='Wariant '+(variantIndex+1)+' z '+REC_VARIANTS.length+' — kliknij, aby zmienić brzmienie';
   // podgląd
   lastHtml=buildEmail(d);
   document.getElementById('preview').srcdoc=lastHtml;
@@ -391,11 +453,14 @@ document.getElementById('addPol').onclick=function(){ addPolicy('','100',''); re
 document.getElementById('saldoOn').onchange=function(){
   document.getElementById('saldoWrap').style.display=this.checked?'block':'none'; render();
 };
-['imie','okres','saldo','data','nrrozl'].forEach(function(id){ document.getElementById(id).addEventListener('input',render); });
+['imie','okres','saldo','data','nrrozl','termin'].forEach(function(id){ document.getElementById(id).addEventListener('input',render); });
 document.getElementById('temat').addEventListener('input',function(){ tematDirty=this.value.trim().length>0; });
 document.getElementById('umowaOn').onchange=render;
 document.getElementById('emojiOff').onchange=render;
+document.getElementById('softHead').onchange=render;
 document.querySelectorAll('input[name=faktura]').forEach(function(r){ r.onchange=render; });
+document.querySelectorAll('input[name=status]').forEach(function(r){ r.onchange=render; });
+document.getElementById('variantBtn').onclick=function(){ variantIndex=(variantIndex+1)%REC_VARIANTS.length; render(); };
 
 document.getElementById('copyTmt').onclick=function(){
   var t=document.getElementById('temat').value.trim();
