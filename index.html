@@ -52,10 +52,11 @@
   .btn-second:hover{background:#252525;}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#0E0E0E;color:#fff;padding:13px 22px;border-radius:10px;font-size:14px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .previewhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .previewhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}
   .previewhead span{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#6A7080;font-weight:800;}
-  iframe{width:100%;height:900px;border:1px solid #E1E8F6;border-radius:12px;background:#fff;}
-  @media(max-width:980px){ .wrap{flex-direction:column;} iframe{height:600px;} }
+  .col-preview{position:sticky;top:16px;align-self:flex-start;}
+  iframe{width:100%;min-height:700px;border:1px solid #E1E8F6;border-radius:12px;background:#fff;display:block;}
+  @media(max-width:980px){ .wrap{flex-direction:column;} .col-preview{position:static;} iframe{min-height:500px;} }
 </style>
 </head>
 <body>
@@ -151,8 +152,8 @@
   </div>
 
   <!-- ===== PRAWA: PODGLĄD ===== -->
-  <div class="col">
-    <div class="previewhead"><span>Podgląd maila</span></div>
+  <div class="col col-preview">
+    <div class="previewhead"><span>Podgląd maila</span><button class="btn-copytmt" id="fullBtn" title="Otwórz podgląd na pełnym ekranie w nowej karcie">⤢ Pełny ekran</button></div>
     <iframe id="preview" title="Podgląd"></iframe>
   </div>
 
@@ -446,7 +447,21 @@ function render(){
   // podgląd
   lastHtml=buildEmail(d);
   document.getElementById('preview').srcdoc=lastHtml;
+  setTimeout(fitPreview,60);
 }
+
+/* ---------- podgląd: dopasuj wysokość ramki do maila (koniec przewijania w środku) ---------- */
+var pv=document.getElementById('preview');
+function fitPreview(){
+  try{
+    var doc=pv.contentDocument||pv.contentWindow.document;
+    if(!doc||!doc.body) return;
+    var h=Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+    if(h>0) pv.style.height=(h+24)+'px';
+  }catch(e){}
+}
+pv.addEventListener('load',fitPreview);
+window.addEventListener('resize',fitPreview);
 
 /* ---------- zdarzenia ---------- */
 document.getElementById('addPol').onclick=function(){ addPolicy('','100',''); render(); };
@@ -461,6 +476,10 @@ document.getElementById('softHead').onchange=render;
 document.querySelectorAll('input[name=faktura]').forEach(function(r){ r.onchange=render; });
 document.querySelectorAll('input[name=status]').forEach(function(r){ r.onchange=render; });
 document.getElementById('variantBtn').onclick=function(){ variantIndex=(variantIndex+1)%REC_VARIANTS.length; render(); };
+document.getElementById('fullBtn').onclick=function(){
+  var w=window.open('','_blank'); if(!w){ alert('Przeglądarka zablokowała nowe okno — pozwól na wyskakujące okna dla tej strony.'); return; }
+  w.document.open(); w.document.write(lastHtml); w.document.close();
+};
 
 document.getElementById('copyTmt').onclick=function(){
   var t=document.getElementById('temat').value.trim();
