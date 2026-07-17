@@ -43,6 +43,13 @@
   .btn-copytmt{background:#EAF0FE;color:var(--blue);border:1px solid #9db9f2;border-radius:9px;padding:0 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .btn-copytmt:hover{background:#dde9fd;}
   .opt-note{font-size:12px;color:#9aa3b5;font-weight:400;}
+  /* typy leasingu (multi-select z osobną kwotą) */
+  .ltype{padding:10px 0;border-bottom:1px solid #EEF1F8;}
+  .ltype:last-child{border-bottom:none;}
+  .ltype .check{margin:0;}
+  .lt-amt{margin:9px 0 2px 27px;}
+  .lt-amt input{padding:9px 11px;font-size:14px;}
+  .lt-echo{margin-left:0;}
   .btn-variant{margin-top:2px;background:#F1F5FF;color:var(--blue);border:1px solid #9db9f2;border-radius:9px;padding:11px;width:100%;font-size:14px;font-weight:700;cursor:pointer;}
   .btn-variant:hover{background:#e3ecfd;}
   .variant-label{font-size:12px;color:#6A7080;font-weight:600;margin:8px 0 0;}
@@ -77,7 +84,7 @@
 <div class="topbar">
   <img src="https://us-ms.gr-cdn.com/getresponse-Jvwcp/photos/b5ea679e-027d-40a8-bcf6-c03267b2b410.png" alt="Akademia Brokera" style="background:#fff;padding:4px 8px;border-radius:6px;">
   <h1>Generator maili o prowizji</h1>
-  <span class="ver">wersja 17.07.2026 · tryby: ubezpieczenia + leasing</span>
+  <span class="ver">wersja 17.07.2026 · leasing: typy (GAP/leasing/auto) + VAT per pozycja</span>
 </div>
 
 <div class="wrap">
@@ -139,10 +146,30 @@
       </div>
 
       <div id="leasingSection" style="display:none;">
-        <h2 class="sec">Kwota prowizji</h2>
-        <label class="f">Kwota prowizji za okres (zł) <span class="opt-note">(kwota netto)</span></label>
-        <input type="text" id="leasingKwota" inputmode="decimal" placeholder="np. 3 500,00">
-        <div class="p-echo" id="leasingEcho"></div>
+        <h2 class="sec">Za co to rozliczenie <span class="opt-note">(zaznacz jedno lub kilka, każde ma swoją kwotę)</span></h2>
+        <div id="leasingTypes">
+          <div class="ltype" data-typ="leasing">
+            <label class="check"><input type="checkbox" class="lt-on" checked> Leasing <span class="opt-note">— broker dolicza 23% VAT</span></label>
+            <div class="lt-amt">
+              <input type="text" class="lt-kw" inputmode="decimal" placeholder="Kwota netto, np. 3 500,00">
+              <div class="p-echo lt-echo"></div>
+            </div>
+          </div>
+          <div class="ltype" data-typ="gap">
+            <label class="check"><input type="checkbox" class="lt-on"> GAP <span class="opt-note">— zwolnione z VAT (art. 43)</span></label>
+            <div class="lt-amt" style="display:none;">
+              <input type="text" class="lt-kw" inputmode="decimal" placeholder="Kwota, np. 1 500,00">
+              <div class="p-echo lt-echo"></div>
+            </div>
+          </div>
+          <div class="ltype" data-typ="samochod">
+            <label class="check"><input type="checkbox" class="lt-on"> Samochód <span class="opt-note">— broker dolicza 23% VAT</span></label>
+            <div class="lt-amt" style="display:none;">
+              <input type="text" class="lt-kw" inputmode="decimal" placeholder="Kwota netto, np. 2 000,00">
+              <div class="p-echo lt-echo"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="totals" id="totals"></div>
@@ -261,6 +288,13 @@ function recArr(){ return MODES[mode].rec; }
 function closeArr(){ return MODES[mode].close; }
 var variantIndex=0;
 
+/* ---------- typy rozliczenia w trybie leasing (multi-select, VAT per pozycja) ---------- */
+var LT_META={
+  leasing:  { label:'Leasing',  vat23:true  },
+  gap:      { label:'GAP',      vat23:false },  // ubezpieczenie → zwolnione z VAT (art. 43)
+  samochod: { label:'Samochód', vat23:true  }
+};
+
 /* ---------- stan: polisy ---------- */
 var policiesEl=document.getElementById('policies');
 function addPolicy(nr,stawka,kwota){
@@ -292,6 +326,15 @@ function collect(){
     var kwNum=parseMoney(kw);
     policies.push({ nr:nr||'—', stawka:formatStawka(st)||'—', kwotaStr:isNaN(kwNum)?'—':formatPLN(kwNum), kwotaNum:isNaN(kwNum)?0:kwNum });
   });
+  var leasingItems=[];
+  document.querySelectorAll('#leasingTypes .ltype').forEach(function(row){
+    var typ=row.getAttribute('data-typ');
+    var meta=LT_META[typ]; if(!meta) return;
+    if(!row.querySelector('.lt-on').checked) return;      // typ nie zaznaczony
+    var kw=parseMoney(row.querySelector('.lt-kw').value);
+    if(isNaN(kw)||kw<=0) return;                          // brak poprawnej kwoty
+    leasingItems.push({ typ:typ, label:meta.label, vat23:meta.vat23, kwotaNum:kw, kwotaStr:formatPLN(kw) });
+  });
   var fakturaMode=document.querySelector('input[name=faktura]:checked').value;
   return {
     mode:mode,
@@ -301,7 +344,7 @@ function collect(){
     data:document.getElementById('data').value.trim(),
     nrrozl:document.getElementById('nrrozl').value.trim(),
     policies:policies,
-    leasingKwotaNum:parseMoney(document.getElementById('leasingKwota').value),
+    leasingItems:leasingItems,
     saldoOn:document.getElementById('saldoOn').checked,
     saldoNum:parseMoney(document.getElementById('saldo').value),
     fakturaMode:fakturaMode,
@@ -315,7 +358,7 @@ function collect(){
 
 /* ---------- jedno źródło kwoty prowizji (oba tryby) ---------- */
 function prowizjaOf(d){
-  if(d.mode==='leasing') return isNaN(d.leasingKwotaNum)?0:d.leasingKwotaNum;
+  if(d.mode==='leasing') return (d.leasingItems||[]).reduce(function(a,i){return a+i.kwotaNum;},0);
   return d.policies.reduce(function(a,p){return a+p.kwotaNum;},0);
 }
 
@@ -336,7 +379,7 @@ function validate(d){
   if(d.imie==='—') e.push('• Imię brokera');
   if(d.okres==='—') e.push('• Okres (miesiąc i rok)');
   if(d.mode==='leasing'){
-    if(isNaN(d.leasingKwotaNum)||d.leasingKwotaNum<=0) e.push('• Kwota prowizji za okres (większa od 0)');
+    if(!d.leasingItems || d.leasingItems.length===0) e.push('• Zaznacz co najmniej jeden typ (Leasing / GAP / Samochód) i wpisz kwotę większą od 0');
   } else {
     if(d.policies.length===0) e.push('• Co najmniej jedna polisa (numer i kwota)');
     else if(d.policies.some(function(p){return p.nr==='—'||p.kwotaStr==='—'||p.kwotaNum<=0;})) e.push('• W każdej polisie: numer ORAZ kwota prowizji większa od 0');
@@ -352,6 +395,12 @@ function buildEmail(d){
   var liczba=d.policies.length;
   var imie=esc(d.imie), okres=esc(d.okres);
   var eHero=d.emojiOn?' 🎉':'', eProw=d.emojiOn?'💰&nbsp; ':'', ePol=d.emojiOn?'📄&nbsp; ':'', eRocket=d.emojiOn?' 🚀':'';
+
+  // typy rozliczenia (tryb leasing) → etykieta w nagłówku + reżim VAT per pozycja
+  var lItems = (d.mode==='leasing') ? (d.leasingItems||[]) : [];
+  var lHasGap = lItems.some(function(i){return !i.vat23;});   // GAP → zwolnione z VAT (art. 43)
+  var lHas23  = lItems.some(function(i){return i.vat23;});    // leasing/samochód → 23% VAT
+  var eyebrow = 'Rozliczenie prowizji' + ((d.mode==='leasing' && lItems.length) ? (' · '+lItems.map(function(i){return i.label;}).join(' + ')) : '');
 
   // nagłówek: łagodny dla małych kwot albo domyślny „Świetne wieści"
   var heroTitle = d.softHead ? ('Twoja prowizja za '+okres+' jest gotowa, '+imie+'.') : ('Świetne wieści, '+imie+'!'+eHero);
@@ -412,11 +461,21 @@ function buildEmail(d){
       +'\n                    </table>';
   }
 
-  // nota o VAT tylko dla ubezpieczeń (art. 43); leasing bez noty o VAT
-  var vatNote = (d.mode==='leasing') ? '' : (''
+  // nota o VAT — pudełko + treść zależna od trybu i typów (VAT per pozycja)
+  function noteBox(inner){ return ''
     +'\n              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EAF0FE" style="background-color:#EAF0FE;border-left:5px solid #1351D8;border-radius:10px;margin-top:14px;">'
-    +'\n                <tr><td style="padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#0E0E0E;">W opisie prosimy dopisać:<br><strong style="font-size:16px;color:#0E0E0E;">„Zwolnienie ze względu na rodzaj prowadzonej działalności (art. 43 ust. 1 ustawy o VAT)”</strong><br><strong style="color:#1351D8;">Ubezpieczenia są zwolnione z VAT.</strong></td></tr>'
-    +'\n              </table>');
+    +'\n                <tr><td style="padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#0E0E0E;">'+inner+'</td></tr>'
+    +'\n              </table>'; }
+  var art43='„Zwolnienie ze względu na rodzaj prowadzonej działalności (art. 43 ust. 1 ustawy o VAT)”';
+  var vatNote='';
+  if(d.mode!=='leasing'){
+    vatNote = noteBox('W opisie prosimy dopisać:<br><strong style="font-size:16px;color:#0E0E0E;">'+art43+'</strong><br><strong style="color:#1351D8;">Ubezpieczenia są zwolnione z VAT.</strong>');
+  } else if(lHasGap && !lHas23){
+    vatNote = noteBox('Pozycja <strong>GAP</strong> to ubezpieczenie — w opisie faktury dopisz:<br><strong style="font-size:16px;color:#0E0E0E;">'+art43+'</strong><br><strong style="color:#1351D8;">GAP jest zwolniony z VAT.</strong>');
+  } else if(lHasGap && lHas23){
+    vatNote = noteBox('<strong style="color:#0E0E0E;">Uwaga na VAT — pozycje mają różne stawki:</strong><br>• <strong>GAP</strong> (ubezpieczenie) — zwolniony z VAT, w opisie dopisz '+art43+'.<br>• <strong>pozostałe pozycje</strong> — z 23% VAT (kwoty w podsumowaniu są netto).<br><strong style="color:#1351D8;">Na fakturze rozdziel je na osobne pozycje.</strong>');
+  }
+  // leasing/samochód bez GAP → 23% VAT, brak osobnej noty (jak dotąd)
   var faktura;
   if(d.fakturaMode==='ostatnio'){
     faktura=''
@@ -430,9 +489,10 @@ function buildEmail(d){
       +'\n              <p style="margin:0 0 12px 0;font-size:16px;line-height:1.6;color:#3A3F4A;">Prosimy o wystawienie na dane, z terminem płatności <strong style="color:#0E0E0E;">7 dni</strong>:</p>'
       +'\n              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F8FD" style="background-color:#F6F8FD;border:1px solid #E1E8F6;border-radius:12px;">'
       +'\n                <tr><td style="padding:18px 22px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#0E0E0E;"><strong>Global Media Sp. z o.o.</strong><br>NIP: 5170447352<br>ul. Kwiatkowskiego 44d/3<br>35-311 Rzeszów</td></tr>'
-      +'\n              </table>'
-      +vatNote;
+      +'\n              </table>';
   }
+  // notę VAT pokazujemy: w leasingu zawsze gdy niepusta (GAP/miks); w ubezpieczeniach jak dotąd — tylko przy pełnych danych
+  if(vatNote && (d.mode==='leasing' || d.fakturaMode!=='ostatnio')) faktura += vatNote;
 
   var umowa='';
   if(d.umowaOn){
@@ -463,6 +523,20 @@ function buildEmail(d){
       +'\n          </table>\n'
       +'        </td></tr>\n')
     : '';
+
+  // rozpiska kwot w karcie „Podsumowanie": ubezpieczenia = jedna linia; leasing = per pozycja + „razem"
+  function sumRow(labelHtml, valueHtml){
+    return '\n                    <table role="presentation" class="sumrow" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="left" style="padding:7px 0;font-size:16px;color:#3A3F4A;">'+labelHtml+'</td><td align="right" style="padding:7px 0;font-size:16px;color:#0E0E0E;font-weight:bold;white-space:nowrap;">'+valueHtml+'</td></tr></table>';
+  }
+  var prowizjaBlock;
+  if(d.mode==='leasing' && lItems.length>1){
+    prowizjaBlock = lItems.map(function(i){ return sumRow(i.label+(i.vat23?' (netto)':''), esc(i.kwotaStr)); }).join('')
+      + sumRow('<strong style="color:#0E0E0E;">'+eProw+'Prowizja za '+okres+' (razem)</strong>', '<strong>'+prowizjaStr+'</strong>');
+  } else if(d.mode==='leasing' && lItems.length===1){
+    prowizjaBlock = sumRow(eProw+'Prowizja za '+okres+(lItems[0].vat23?' (netto)':''), esc(lItems[0].kwotaStr));
+  } else {
+    prowizjaBlock = sumRow(eProw+'Prowizja za '+okres, prowizjaStr); // ubezpieczenia lub pusty leasing
+  }
 
   return ''
 +'<!DOCTYPE html>\n'
@@ -497,14 +571,14 @@ function buildEmail(d){
 +'      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(14,14,14,0.08);">\n'
 +'        <tr><td bgcolor="#1351D8" style="background-color:#1351D8;height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>\n'
 +'        <tr><td align="center" bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:30px 24px 26px 24px;border-bottom:1px solid #EEF1F8;"><img src="https://us-ms.gr-cdn.com/getresponse-Jvwcp/photos/b5ea679e-027d-40a8-bcf6-c03267b2b410.png" width="280" height="44" alt="AKADEMIA BROKERA" style="width:280px;max-width:70%;height:auto;margin:0 auto;color:#0E0E0E;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;letter-spacing:1px;"></td></tr>\n'
-+'        <tr><td class="px" align="left" style="padding:38px 48px 8px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 6px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Rozliczenie prowizji</p><h1 class="h1" style="margin:0;font-size:30px;line-height:1.2;color:#0E0E0E;font-weight:bold;">'+heroTitle+'</h1></td></tr>\n'
++'        <tr><td class="px" align="left" style="padding:38px 48px 8px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0 0 6px 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">'+eyebrow+'</p><h1 class="h1" style="margin:0;font-size:30px;line-height:1.2;color:#0E0E0E;font-weight:bold;">'+heroTitle+'</h1></td></tr>\n'
 +'        <tr><td class="px" align="left" style="padding:10px 48px 4px 48px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:17px;line-height:1.6;color:#3A3F4A;">Twoja prowizja za <strong style="color:#0E0E0E;">'+okres+'</strong> została właśnie naliczona. Poniżej znajdziesz pełne podsumowanie.</p></td></tr>\n'
 +metaLine
 +'        <tr><td class="px" style="padding:24px 48px 8px 48px;">\n'
 +'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EAF0FE" style="background-color:#EAF0FE;border-radius:14px;border-left:5px solid #1351D8;"><tr><td style="padding:24px 26px;font-family:Arial,Helvetica,sans-serif;">\n'
 +'                    <p style="margin:0 0 14px 0;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#1351D8;font-weight:bold;">Podsumowanie</p>'
 +saldoRow
-+'\n                    <table role="presentation" class="sumrow" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="left" style="padding:7px 0;font-size:16px;color:#3A3F4A;">'+eProw+'Prowizja za '+okres+(d.mode==='leasing'?' (netto)':'')+'</td><td align="right" style="padding:7px 0;font-size:16px;color:#0E0E0E;font-weight:bold;white-space:nowrap;">'+prowizjaStr+'</td></tr></table>'
++prowizjaBlock
 +liczbaRow
 +totalBlock
 +'\n          </td></tr></table>\n'
@@ -539,9 +613,17 @@ function render(){
   var d=collect();
   var prowizja=prowizjaOf(d);
   // sumy w formularzu (zależne od trybu)
-  var t = (d.mode==='leasing')
-    ? '💰 Prowizja za okres: <b>'+formatPLN(prowizja)+'</b>'
-    : '📄 Liczba polis: <b>'+d.policies.length+'</b><br>💰 Prowizja za okres: <b>'+formatPLN(prowizja)+'</b>';
+  var t;
+  if(d.mode==='leasing'){
+    var items=d.leasingItems||[];
+    if(items.length===0){ t='💰 Prowizja za okres: <b>'+formatPLN(0)+'</b> <span style="color:#C0392B;">— zaznacz typ i wpisz kwotę</span>'; }
+    else {
+      t = items.map(function(i){ return '💰 '+i.label+': <b>'+i.kwotaStr+'</b>'+(i.vat23?' <span style="color:#6A7080;">(netto, +23% VAT)</span>':' <span style="color:#14663A;">(zwolnione z VAT)</span>'); }).join('<br>');
+      if(items.length>1) t += '<br><b>Razem: '+formatPLN(prowizja)+'</b>';
+    }
+  } else {
+    t = '📄 Liczba polis: <b>'+d.policies.length+'</b><br>💰 Prowizja za okres: <b>'+formatPLN(prowizja)+'</b>';
+  }
   var payout=prowizja;
   if(d.saldoOn){
     var s=isNaN(d.saldoNum)?0:d.saldoNum; payout=s+prowizja;
@@ -552,10 +634,19 @@ function render(){
   document.getElementById('totals').innerHTML=t;
   // echa sparsowanych kwot pod polami
   policiesEl.querySelectorAll('.polrow').forEach(function(r){ echoFor(r.querySelector('.p-kw'), r.querySelector('.p-echo')); });
-  echoFor(document.getElementById('leasingKwota'), document.getElementById('leasingEcho'));
+  document.querySelectorAll('#leasingTypes .ltype').forEach(function(row){ echoFor(row.querySelector('.lt-kw'), row.querySelector('.lt-echo')); });
   echoFor(document.getElementById('saldo'), document.getElementById('saldoEcho'));
   var mb=document.getElementById('modebadge');
-  if(mb){ if(d.mode==='leasing'){ mb.textContent='LEASING · broker dolicza 23% VAT'; mb.className='modebadge leasing'; } else { mb.textContent='UBEZPIECZENIA · zwolnione z VAT (art. 43)'; mb.className='modebadge'; } }
+  if(mb){
+    if(d.mode==='leasing'){
+      var li=d.leasingItems||[];
+      var g=li.some(function(i){return !i.vat23;}), v=li.some(function(i){return i.vat23;});
+      if(li.length===0){ mb.textContent='LEASING · zaznacz typ i kwotę'; mb.className='modebadge leasing'; }
+      else if(g && v){ mb.textContent='MIKS · GAP zwolniony (art.43) + reszta 23% VAT'; mb.className='modebadge leasing'; }
+      else if(g){ mb.textContent='GAP · zwolnione z VAT (art. 43)'; mb.className='modebadge'; }
+      else { mb.textContent=li.map(function(i){return i.label;}).join(' + ').toUpperCase()+' · broker dolicza 23% VAT'; mb.className='modebadge leasing'; }
+    } else { mb.textContent='UBEZPIECZENIA · zwolnione z VAT (art. 43)'; mb.className='modebadge'; }
+  }
   document.getElementById('variantLabel').textContent='Wariant '+(variantIndex+1)+' z '+recArr().length+' — kliknij, aby zmienić brzmienie';
   // podgląd
   lastHtml=buildEmail(d);
@@ -581,7 +672,13 @@ document.getElementById('addPol').onclick=function(){ addPolicy('','100',''); re
 document.getElementById('saldoOn').onchange=function(){
   document.getElementById('saldoWrap').style.display=this.checked?'block':'none'; render();
 };
-['imie','okres','saldo','data','nrrozl','termin','leasingKwota'].forEach(function(id){ document.getElementById(id).addEventListener('input',render); });
+['imie','okres','saldo','data','nrrozl','termin'].forEach(function(id){ document.getElementById(id).addEventListener('input',render); });
+// typy leasingu: checkbox pokazuje/chowa pole kwoty; kwota odświeża podgląd
+document.querySelectorAll('#leasingTypes .ltype').forEach(function(row){
+  var chk=row.querySelector('.lt-on'), amt=row.querySelector('.lt-amt');
+  chk.addEventListener('change',function(){ amt.style.display=chk.checked?'block':'none'; render(); });
+  row.querySelector('.lt-kw').addEventListener('input',render);
+});
 document.getElementById('temat').addEventListener('input',function(){ tematDirty=this.value.trim().length>0; });
 document.getElementById('umowaOn').onchange=render;
 document.getElementById('emojiOff').onchange=render;
@@ -641,11 +738,12 @@ document.getElementById('dlBtn').onclick=function(){
 
 /* ---------- nowy mail: wyczyść dane brokera (okres i tryb zostają) ---------- */
 function resetForm(){
-  if(!confirm('Wyczyścić dane brokera i zacząć nowy mail?\n\n(Okres i wybrany tryb zostają — reszta pól się czyści.)')) return;
-  ['imie','temat','data','nrrozl','termin','leasingKwota','saldo'].forEach(function(id){ document.getElementById(id).value=''; });
+  if(!confirm('Wyczyścić dane brokera i zacząć nowy mail?\n\n(Okres, tryb i zaznaczone typy zostają — kwoty i reszta pól się czyszczą.)')) return;
+  ['imie','temat','data','nrrozl','termin','saldo'].forEach(function(id){ document.getElementById(id).value=''; });
   tematDirty=false; // temat znów uzupełni się sam z okresu
   document.getElementById('saldoOn').checked=false;
   document.getElementById('saldoWrap').style.display='none';
+  document.querySelectorAll('#leasingTypes .lt-kw').forEach(function(i){ i.value=''; }); // czyść kwoty typów (zaznaczenia zostają)
   policiesEl.innerHTML=''; addPolicy('','100','');
   var st=document.querySelector('input[name=status][value=teraz]'); if(st) st.checked=true;
   render();
