@@ -59,6 +59,8 @@
   .btn-primary:hover{background:#0f43b3;}
   .btn-second{background:#0E0E0E;color:#fff;}
   .btn-second:hover{background:#252525;}
+  .btn-reset{background:#fff;color:#3A3F4A;border:1px solid #CBD6EC;}
+  .btn-reset:hover{background:#F6F8FD;border-color:#9db9f2;}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#0E0E0E;color:#fff;padding:13px 22px;border-radius:10px;font-size:14px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .previewhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}
@@ -174,6 +176,7 @@
       <div class="actions">
         <button class="btn btn-primary" id="copyBtn">📋 Kopiuj HTML do maila</button>
         <button class="btn btn-second" id="dlBtn">⬇ Pobierz plik .html</button>
+        <button class="btn btn-reset" id="resetBtn" title="Wyczyść dane brokera i zacznij nowy mail (okres i tryb zostają)">🧹 Nowy mail</button>
       </div>
 
     </div>
@@ -635,6 +638,21 @@ document.getElementById('dlBtn').onclick=function(){
   var blob=new Blob([lastHtml],{type:'text/html;charset=utf-8'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name+'.html'; a.click();
 };
+
+/* ---------- nowy mail: wyczyść dane brokera (okres i tryb zostają) ---------- */
+function resetForm(){
+  if(!confirm('Wyczyścić dane brokera i zacząć nowy mail?\n\n(Okres i wybrany tryb zostają — reszta pól się czyści.)')) return;
+  ['imie','temat','data','nrrozl','termin','leasingKwota','saldo'].forEach(function(id){ document.getElementById(id).value=''; });
+  tematDirty=false; // temat znów uzupełni się sam z okresu
+  document.getElementById('saldoOn').checked=false;
+  document.getElementById('saldoWrap').style.display='none';
+  policiesEl.innerHTML=''; addPolicy('','100','');
+  var st=document.querySelector('input[name=status][value=teraz]'); if(st) st.checked=true;
+  render();
+  window.scrollTo(0,0);
+  document.getElementById('imie').focus();
+}
+document.getElementById('resetBtn').onclick=resetForm;
 function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg||'Skopiowano ✓'; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},1800); }
 
 /* ---------- start ---------- */
